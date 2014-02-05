@@ -5,7 +5,6 @@
 (require 'ox)
 
 (defvar *org-octopress-yaml-front-matter* t)
-
 (defun octorg:normalize-lang (str)
   (downcase (replace-regexp-in-string " " "-" str)))
 
@@ -19,19 +18,25 @@
     (bold . org-octopress-bold)
     (fixed-width . org-octopress-fixed-width)
     (headline . org-octopress-headline)
+    (timestamp . org-octopress-timestamp)
     (italic . org-octopress-italic)
     (link . org-octopress-link)
     (paragraph . org-octopress-paragraph)
     (section . org-octopress-section)
     (src-block . org-octopress-src-block)
-    (template . org-octopress-template)
-))
+    (template . org-octopress-template))
+    :options-alist '((:title "TITLE" nil nil space) (:author "AUTHOR" nil user-full-name t) (:email "EMAIL" nil user-mail-address t) (:date "DATE" nil nil t)))
+
+(defun org-octopress-timestamp (timestamp contents info)
+  "Transcode a TIMESTAMP object from Org to ASCII.
+CONTENTS is nil.  INFO is a plist holding contextual information."
+  (org-timestamp-translate timestamp))
 
 (defun org-octopress-template (contents info)
   "Accepts the final transcoded string and a plist of export options,
 returns final string with YAML frontmatter as preamble"
   (let ((title (car (plist-get info :title)))
-        (date (car (plist-get info :date)))
+        (date (org-export-data  (org-export-get-date info) info))
         (time "")
         (frontmatter
 "---
@@ -170,8 +175,9 @@ Octopress/Jekyll style"
          (filename (format (concat dirname "%s-%s.org") date title-no-spaces)))
     (find-file filename)
     (rename-buffer title)
-    (org-insert-export-options-template)
-    (rename-buffer filename)))
+    (org-export-insert-default-template 'octopress)
+    (rename-buffer filename)
+    ))
 
 (defun make-org-publish-project-alist
   (name blorg-root octopress-root)

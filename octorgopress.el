@@ -25,7 +25,7 @@
     (section . org-octopress-section)
     (src-block . org-octopress-src-block)
     (template . org-octopress-template))
-    :options-alist '((:title "TITLE" nil nil space) (:author "AUTHOR" nil user-full-name t) (:email "EMAIL" nil user-mail-address t) (:date "DATE" nil nil t)))
+    :options-alist '((:tags "TAGS" nil nil split)(:categories "CATEGORIES" nil nil split)(:title "TITLE" nil nil space) (:author "AUTHOR" nil user-full-name t) (:email "EMAIL" nil user-mail-address t) (:date "DATE" nil nil t)))
 
 (defun org-octopress-timestamp (timestamp contents info)
   "Transcode a TIMESTAMP object from Org to ASCII.
@@ -36,6 +36,8 @@ CONTENTS is nil.  INFO is a plist holding contextual information."
   "Accepts the final transcoded string and a plist of export options,
 returns final string with YAML frontmatter as preamble"
   (let ((title (car (plist-get info :title)))
+        (categories (format "[%s]" (mapconcat  'identity (plist-get info :categories) ",")))
+        (tags (format "[%s]" (mapconcat  'identity (plist-get info :tags) ",")))
         (date (org-export-data  (org-export-get-date info) info))
         (time "")
         (frontmatter
@@ -45,11 +47,12 @@ title: %s
 date: %s %s
 comments: true
 external-url:
-categories:
+categories: %s
+tags: %s
 ---
 "))
     (if *org-octopress-yaml-front-matter*
-        (concat (format frontmatter title date time) contents)
+        (concat (format frontmatter title date time categories tags ) contents)
       contents)))
 
 (defun get-lang (lang)

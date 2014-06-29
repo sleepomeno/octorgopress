@@ -13,19 +13,19 @@
   (mapcar #'octorg:normalize-lang
           '("SML" "ActionScript" "Ada" "ANTLR" "AppleScript" "Assembly" "Asymptote" "Awk" "Befunge" "Boo" "BrainFuck" "C" "C++" "C#" "Clojure" "CoffeeScript" "ColdFusion" "Common Lisp" "Coq" "Cython" "D" "Dart" "Delphi" "Dylan" "Erlang" "Factor" "Fancy" "Fortran" "F#" "Gherkin" "GL shaders" "Groovy" "Haskell" "IDL" "Io" "Java" "JavaScript" "LLVM" "Logtalk" "Lua" "Matlab" "MiniD" "Modelica" "Modula-2" "MuPad" "Nemerle" "Nimrod" "Objective-C" "Objective-J" "Octave" "OCaml" "PHP" "Perl" "PovRay" "PostScript" "PowerShell" "Prolog" "Python" "Rebol" "Redcode" "Ruby" "Rust" "S" "S-Plus" "R" "Scala" "Scheme" "Scilab" "Smalltalk" "SNOBOL" "Tcl" "Vala" "Verilog" "VHDL" "Visual Basic.NET" "Visual FoxPro" "XQuery")))
 
-(org-export-define-backend 'octopress
-  '(
-    (bold . org-octopress-bold)
-    (fixed-width . org-octopress-fixed-width)
+(org-export-define-derived-backend 'octopress 'md
+  :translate-alist '(
+    ;; (bold . org-octopress-bold)
+    ;; (fixed-width . org-octopress-fixed-width)
     (headline . org-octopress-headline)
-    (timestamp . org-octopress-timestamp)
-    (italic . org-octopress-italic)
+    ;; (timestamp . org-octopress-timestamp)
+    ;; (italic . org-octopress-italic)
     (link . org-octopress-link)
     (paragraph . org-octopress-paragraph)
-    (section . org-octopress-section)
+    ;; (section . org-octopress-section)
     (src-block . org-octopress-src-block)
     (template . org-octopress-template))
-    :options-alist '((:tags "TAGS" nil nil split)(:categories "CATEGORIES" nil nil split)(:title "TITLE" nil nil space) (:author "AUTHOR" nil user-full-name t) (:email "EMAIL" nil user-mail-address t) (:date "DATE" nil nil t)))
+    :options-alist '((:sidebar "SIDEBAR" nil nil t) (:publish "PUBLISH" nil "true" t) (:tags "TAGS" nil nil split)(:categories "CATEGORIES" nil nil split)(:title "TITLE" nil nil space) (:author "AUTHOR" nil user-full-name t) (:email "EMAIL" nil user-mail-address t) (:date "DATE" nil nil t)))
 
 (defun org-octopress-timestamp (timestamp contents info)
   "Transcode a TIMESTAMP object from Org to ASCII.
@@ -36,6 +36,8 @@ CONTENTS is nil.  INFO is a plist holding contextual information."
   "Accepts the final transcoded string and a plist of export options,
 returns final string with YAML frontmatter as preamble"
   (let ((title (car (plist-get info :title)))
+        (sidebar (or (plist-get info :sidebar) ""))
+        (publish (or (plist-get info :publish) ""))
         (categories (format "[%s]" (mapconcat  'identity (plist-get info :categories) ",")))
         (tags (format "[%s]" (mapconcat  'identity (plist-get info :tags) ",")))
         (date (org-export-data  (org-export-get-date info) info))
@@ -49,10 +51,12 @@ comments: true
 external-url:
 categories: %s
 tags: %s
+published: %s
+sidebar: %s
 ---
 "))
     (if *org-octopress-yaml-front-matter*
-        (concat (format frontmatter title date time categories tags ) contents)
+        (concat (format frontmatter title date time categories tags  publish sidebar) contents)
       contents)))
 
 (defun get-lang (lang)
@@ -96,8 +100,22 @@ tags: %s
             contents)))
 
 (defun org-octopress-link (link contents info)
-  (let ((path (org-element-property :raw-link link)))
-    (format "[%s](%s)" contents path)))
+  (let* ((attributes
+           (let* ((parent (org-export-get-parent-element link))
+                  (link (let ((container (org-export-get-parent link)))
+                          (if (and (eq (org-element-type container) 'link)
+                                   (org-html-inline-image-p link info))
+                              container
+                            link))))
+             (and (eq (org-element-map parent 'link 'identity info t) link)
+                  (org-export-read-attribute :attr_octopress parent))))
+         (path (org-element-property :raw-link link))
+         (type (plist-get attributes ':type))
+         (class (or (plist-get attributes ':class) ""))
+         (width (or (plist-get attributes ':width) ""))
+         (height (or (plist-get attributes ':height) ""))
+         )
+    (if (equal type "image") (format "{%% img %s %s %s %s %%}" class path width height) (format "<a href=\"%s\" target=\"_blank\">%s</a>"  path contents))))
 
 (defun org-octopress-paragraph (paragraph contents info)
   contents)

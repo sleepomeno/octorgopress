@@ -145,6 +145,7 @@ tags: %s
   "Transcode fixed-width region to Octopress anonymous code block"
   (concat "```\n"
           (trim-empty-lines (org-element-property :value fixed-width))
+
           "\n```\n"))
 
 (defun org-octopress-export-as-octopress
